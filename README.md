@@ -1,5 +1,5 @@
 # politeness-gauge
-Measuring the politeness of emails
+Measuring the politeness of professional emails.
 
 Anna Clegg and Sarah Robinson, spring 2015
 
