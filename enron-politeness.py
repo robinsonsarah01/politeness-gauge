@@ -16,7 +16,7 @@ files have unique names, so you can move them all into one directory if you woul
 way instead of in genre-separated directories.
 """
 
-# category dictions are defined as cat[coarse] = [ list of subcats in this category ]
+# category dictionaries are defined as cat[coarse] = [ list of subcats in this category ]
  
 # categories we've decided are polite
 polite_cats = {}
@@ -40,6 +40,12 @@ ignored_cats[3] = []
 ignored_cats[4] = [ 1, 2, 3, 5, 8, 10, 11, 12, 15, 17, 18 ]
 
 
+# ngram dictionaries are defined as cat[n-gram] = count of its appearances in this category
+polite_ngrams = {}
+
+impolite_ngrams = {}
+
+
 # TODO loop through all of the files in enron_with_cats\[1-6]
 
 
@@ -48,15 +54,31 @@ def tokenize_email(email_path):
     """
     Tokenize an email's body.
     
-    Input: email_path, the relative path to the email text file.
+    email_path: the relative path to the email text file.
     """
     header, body = eep.parse_email(email_file)
     tokens = nltk.word_tokenize(body)
-    print tokens
-
+    clean_tokens = []
+    for word in tokens:
+    	if word.isalnum() or word == ".":
+    		clean_tokens.append(word.lower())
+    
+    
+def get_ngrams(tokens, is_polite):
+	"""
+	Given a list of tokens, get trigram, bigram, and unigram counts.
+	
+	is_polite: whether this email falls into the politeness category or if it's impolite instead.
+	"""
+	for word in tokens:
+		pass
+	
+	pass    
+    
 
 if __name__ == "__main__":
     # curr_path = os.getcwd()
     email_file = os.path.join("enron_with_categories","1","7664.txt")
     # os.path.join(curr_path, email_file)
-    tokenize_email(email_file)
+    tokens = tokenize_email(email_file)
+    get_ngrams(tokens, True)
