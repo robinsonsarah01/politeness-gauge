@@ -20,34 +20,101 @@ way instead of in genre-separated directories.
  
 # categories we've decided are polite
 polite_cats = {}
-polite_cats[1] = [ 1, 3, 4, 5, 6 ]
-polite_cats[2] = [ 3, 5, 8 ]
-polite_cats[3] = [ x for x in range(1,14) ] # everything in coarse category 3 (ie all of 1.1)
-polite_cats[4] = [ 4, 6 ]
+polite_cats['1'] = [ '1', '3', '4', '5', '6' ]
+polite_cats['2'] = [ '3', '5', '8' ]
+polite_cats['3'] = [ str(x) for x in range(1,14) ] # everything in coarse category 3 (ie all of 1.1)
+polite_cats['4'] = [ '4', '6' ]
 
 # categories we've decided are impolite
 impolite_cats = {}
-impolite_cats[1] = [ 2 ]
-impolite_cats[2] = [ 11, 12 ]
-impolite_cats[3] = []
-impolite_cats[4] = [ 7, 9, 13, 14, 16, 19 ]
+impolite_cats['1'] = [ '2' ]
+impolite_cats['2'] = [ '11', '12' ]
+impolite_cats['3'] = []
+impolite_cats['4'] = [ '7', '9', '13', '14', '16', '19' ]
 
 # categories we've decided to ignore
 ignored_cats = {}
-ignored_cats[1] = [ 7, 8 ]
-ignored_cats[2] = [ 1, 2, 4, 6, 7, 9, 10, 13 ]
-ignored_cats[3] = []
-ignored_cats[4] = [ 1, 2, 3, 5, 8, 10, 11, 12, 15, 17, 18 ]
+ignored_cats['1'] = [ '7', '8' ]
+ignored_cats['2'] = [ '1', '2', '4', '6', '7', '9', '10', '13' ]
+ignored_cats['3'] = []
+ignored_cats['4'] = [ '1', '2', '3', '5', '8', '10', '11', '12', '15', '17', '18' ]
 
 
 # ngram dictionaries are defined as cat[n-gram] = count of its appearances in this category
+# unigrams, bigrams, and trigrams are the keys; they are represented as strings (words and spaces)
 polite_ngrams = {}
 
 impolite_ngrams = {}
 
 
-# TODO loop through all of the files in enron_with_cats\[1-6]
+# we have a set of all the ngrams -- find the total count by adding their appearances in the ngram dicts
+total_ngrams = set()
 
+
+# lists of file numbers in the polite or impolite categories
+# each entry in the list is a full relative filepath from . to the email file
+polite_files = []
+
+impolite_files = []
+
+
+def categorize_emails():
+    """
+    Loop through all of the files in enron_with_cats\[1-6] and mark them as polite or impolite.
+    """
+    for i in range(1,7): # 1 - 6, because we ignore 1.7 and 1.8
+        filepath = os.path.join("enron_with_categories",str(i))
+        filelist = os.listdir(filepath)
+        filelist.sort() # may not be necessary, do it anyway
+        i = 0
+        num_files = len(filelist)
+        while i < num_files:
+            cats_file = filelist[i]
+            email_file = filelist[i+1]
+            type = process_cats( os.path.join(filepath,cats_file) )
+            email_filepath = os.path.join(filepath, email_file)
+            if type == "polite":
+                polite_files.append(email_filepath)
+            elif type == "impolite":
+                impolite_files.append(email_filepath)
+            # else:
+                # print "ignoring file", email_file
+            i += 2
+
+    print len(polite_files)
+    print len(impolite_files)
+
+def process_cats(cat_file):
+    """
+    Given the path to a .cats file of email categories, returns "polite", "impolite", or "neither".
+    """
+    f = file(cat_file, 'r')
+    lines = f.readlines()
+    f.close()
+    
+    # keep track of the counts for each category
+    polite, impolite, ignored = 0, 0, 0
+    
+    for line in lines:
+        line = line.strip()
+        # major is the major category (major.x)
+        # sub is the minor category (x.sub)
+        # num is how many people assigned the email to this category
+        major,sub,num = line.split(",")
+        num = int(num)
+        if sub in polite_cats[major]:
+            polite += num
+        elif sub in impolite_cats[major]:
+            impolite += num
+        else:
+            ignored += num
+    
+    if polite > impolite:
+        return "polite"
+    elif impolite > polite:
+        return "impolite"
+    # ignore a file if polite & impolite counts are equal
+    return "neither"
 
 
 def tokenize_email(email_path):
@@ -58,27 +125,61 @@ def tokenize_email(email_path):
     """
     header, body = eep.parse_email(email_file)
     tokens = nltk.word_tokenize(body)
+    return tokenize_text(tokens)
+
+
+def tokenize_text(tokens):
     clean_tokens = []
     for word in tokens:
-    	if word.isalnum() or word == ".":
-    		clean_tokens.append(word.lower())
+        if word.isalnum() or word == ".":
+            clean_tokens.append(word.lower())
     
+    return clean_tokens
+
     
 def get_ngrams(tokens, is_polite):
-	"""
-	Given a list of tokens, get trigram, bigram, and unigram counts.
-	
-	is_polite: whether this email falls into the politeness category or if it's impolite instead.
-	"""
-	for word in tokens:
-		pass
-	
-	pass    
+    """
+    Given a list of tokens, get trigram, bigram, and unigram counts.
+
+    is_polite: whether this email falls into the politeness category or if it's impolite instead.
+    """
+    dict = polite_ngrams if is_polite else impolite_ngrams
+    num_toks = len(tokens)
+    for i in range(0, num_toks):
+        word = tokens[i]
+        if word == ".":
+            continue
+        # unigram
+        if word not in dict:
+            dict[word] = 0
+        dict[word] += 1
+        total_ngrams.add(word)
+        # bigram
+        if i+1 < num_toks:
+            next_word = tokens[i+1]
+            if next_word == ".":
+                continue
+            bigram = word + " " + next_word
+            if bigram not in dict:
+                dict[bigram] = 0
+            dict[bigram] += 1
+            total_ngrams.add(bigram)
+        if i+1 < num_toks:
+            next_word = tokens[i+2]
+            if next_word == ".":
+                continue
+            trigram = word + " " + tokens[i+1] + " " + next_word
+            if trigram not in dict:
+                dict[trigram] = 0
+            dict[trigram] += 1
+            total_ngrams.add(trigram)
     
 
 if __name__ == "__main__":
+    categorize_emails()
     # curr_path = os.getcwd()
-    email_file = os.path.join("enron_with_categories","1","7664.txt")
+    # email_file = os.path.join("enron_with_categories","1","7664.txt")
     # os.path.join(curr_path, email_file)
-    tokens = tokenize_email(email_file)
-    get_ngrams(tokens, True)
+    # tokens = tokenize_email(email_file)
+    # get_ngrams(tokens, True)
+    # print total_ngrams
