@@ -145,11 +145,11 @@ def tokenize_email(email_path):
     email_path: the relative path to the email text file.
     """
     header, body = eep.parse_email(email_path)
-    tokens = nltk.word_tokenize(body)
-    return tokenize_text(tokens)
+    return tokenize_text(body)
 
 
 def tokenize_text(tokens):
+    tokens = nltk.word_tokenize(tokens)
     clean_tokens = []
     for word in tokens:
         if word.isalnum() or word == ".":
@@ -187,6 +187,7 @@ def get_ngrams(tokens, is_polite, process_unigrams):
                 dict[bigram] = 0
             dict[bigram] += 1
             total_ngrams.add(bigram)
+        # trigram
         if i+2 < num_toks:
             next_word = tokens[i+2]
             if next_word in ignored_toks:
@@ -210,11 +211,54 @@ def get_selected_polite_ngrams():
     ngrams = []
     for line in lines:
         line = line.strip().split(" ")
-        print line
+        line = line [:-1] # the last thing in the line is the number of times this n-gram occurred
+        line = " ".join(line)
+        selected_polite_ngrams.append(line)
+
+
+def get_enron_politeness_score(input):
+    """
+    Return a score based on the selected polite n-grams from the enron set.
     
+    The simple way to do this is to count the occurrences of the n-grams in the input.
+    A better way would probably assign weights based on appearances in the original set;
+    we might do that in the future, given the time.
+    """
+    tokens = tokenize_text(input)
+    print tokens
+    # the simple way 
+    count = 0
+    num_toks = len(tokens)
+    for i in range(0, num_toks):
+        word = tokens[i]
+        if word == ".":
+            continue
+        # bigrams
+        if i+1 < num_toks:
+            next_word = tokens[i+1]
+            if next_word == ".":
+                continue
+            bigram = word + " " + next_word
+            if bigram in selected_polite_ngrams:
+                count += 1
+            # print bigram
+        if i+2 < num_toks:
+            next_word = tokens[i+2]
+            if next_word == ".":
+                continue
+            trigram = word + " " + tokens[i+1] + " " + next_word
+            if trigram in selected_polite_ngrams:
+                count += 1
+            # print trigram
+            
+    return count
 
 
 if __name__ == "__main__":
     # categorize_emails()
     # process_polite_emails()
     get_selected_polite_ngrams()
+    # testing examples: 
+    print get_enron_politeness_score("so idk about you but i would really like this pie. give me this pie. no pie for you. nope.")
+    print get_enron_politeness_score("i would be very happy if you would let me know about the pie." 
+        + " the pie is very important to me. i think that it may be significant to the future of the world.")
