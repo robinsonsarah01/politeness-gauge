@@ -225,6 +225,9 @@ def get_enron_politeness_score(tokens):
     A better way would probably assign weights based on appearances in the original set;
     we might do that in the future, given the time.
     """
+    if len(selected_polite_ngrams) == 0:
+        get_selected_polite_ngrams()
+    
     # the simple way 
     count = 0
     num_toks = len(tokens)
@@ -256,7 +259,6 @@ def get_enron_politeness_score(tokens):
 if __name__ == "__main__":
     # categorize_emails()
     # process_polite_emails()
-    get_selected_polite_ngrams()
     # testing examples: 
     tokens = tokenize_text("so idk about you but i would really like this pie. give me this pie. no pie for you. nope.")
     print get_enron_politeness_score(tokens)

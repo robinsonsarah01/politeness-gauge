@@ -15,6 +15,9 @@ polite_unigrams = [
     ,"sorry"
     ,"assure"
     ,"if"
+    ,"may"
+    ,"would"
+    ,"supposed"
 ]
 
 # polite_bigrams = [
