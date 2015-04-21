@@ -50,7 +50,7 @@ def get_overall_score():
     score = 50
     score += counts["politeness"] * 4
     score -= counts["curses"] * 10
-    score -= counts["emoticons"] * 3
+    score -= counts["emoticons"] * 4
     return score
     
     
