@@ -37,6 +37,8 @@ def get_scores(input_text):
     
     counts["emoticons"] = emoticons.get_emoticon_count(input_text)
     
+    counts["input_len"] = len(tokens)
+    
     return counts
     
     
@@ -44,9 +46,18 @@ def get_overall_score():
     """
     Based on current counts, calculate an overall politeness score.
     """
-    pass
+    # TODO make this relative to the size of the input
+    score = 50
+    score += counts["politeness"] * 4
+    score -= counts["curses"] * 10
+    score -= counts["emoticons"] * 3
+    return score
     
     
 if __name__ == "__main__":
     input = "Thank you for contacting me! I'm generally free in the mornings before 11 and in the afternoons after 4 on weekdays; is there any time that would be most convenient to meet to discuss the job? thank you,"
     print get_scores(input)
+    print get_overall_score()
+    input = "wtf prof i told you i needed that damn recommendation like today. fuck!!! >:O dude like wtf"
+    print get_scores(input)
+    print get_overall_score()
