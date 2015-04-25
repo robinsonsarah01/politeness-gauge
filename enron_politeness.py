@@ -20,9 +20,9 @@ way instead of in genre-separated directories.
  
 # categories we've decided are polite
 polite_cats = {}
-polite_cats['1'] = [ '1', '3', '4', '5', '6' ]
+polite_cats['1'] = [ '3', '4', '5', '6' ] # , '1' ]
 polite_cats['2'] = [ '3', '5', '8' ]
-polite_cats['3'] = [ str(x) for x in range(1,14) ] # everything in coarse category 3 (ie all of 1.1)
+polite_cats['3'] = [ ] #str(x) for x in range(1,14) ] # everything in coarse category 3 (ie all of 1.1)
 polite_cats['4'] = [ '4', '6' ]
 
 # categories we've decided are impolite
@@ -34,7 +34,7 @@ impolite_cats['4'] = [ '7', '9', '13', '14', '16', '19' ]
 
 # categories we've decided to ignore
 ignored_cats = {}
-ignored_cats['1'] = [ '7', '8' ]
+ignored_cats['1'] = [ '1', '7', '8' ]
 ignored_cats['2'] = [ '1', '2', '4', '6', '7', '9', '10', '13' ]
 ignored_cats['3'] = []
 ignored_cats['4'] = [ '1', '2', '3', '5', '8', '10', '11', '12', '15', '17', '18' ]
@@ -51,6 +51,18 @@ selected_polite_ngrams = []
 
 # we have a set of all the ngrams -- find the total count by adding their appearances in the ngram dicts
 total_ngrams = set()
+
+# number of sequences (in this case, emails) in either category
+polite_count = 0
+impolite_count = 0
+vocab_size = 0
+
+prob_polite = 0
+prob_impolite = 0
+
+# dictionaries of n-gram probabilities... which we don't actually need
+# polite_probs = {}
+# impolite_probs = {}
 
 
 # lists of file numbers in the polite or impolite categories
@@ -79,10 +91,14 @@ def categorize_emails():
                 polite_files.append(email_filepath)
             elif type == "impolite":
                 impolite_files.append(email_filepath)
-            # else:
-                # print "ignoring file", email_file
+            else:
+                print "ignoring file", email_file
             i += 2
 
+    polite_count = len(polite_files)
+    impolite_count = len(impolite_files)
+    prob_polite = polite_count / ( polite_count + impolite_count )
+    prob_impolite = impolite_count / ( polite_count + impolite_count )
 
 def process_cats(cat_file):
     """
@@ -109,15 +125,20 @@ def process_cats(cat_file):
         else:
             ignored += num
     
-    if polite > impolite:
-        return "polite"
-    elif impolite > polite:
+    # if polite > impolite:
+        # return "polite"
+    # elif impolite > polite:
+        # return "impolite"
+    if impolite > 0:
+        # print polite - impolite
         return "impolite"
+    if polite > 0:
+        return "polite"
     # ignore a file if polite & impolite counts are equal
     return "neither"
 
 
-def process_polite_emails():
+def process_emails():
     """
     We ended up with 1615 polite emails and 33 impolite emails,
     so we're going to only deal with the polite features.
@@ -125,18 +146,52 @@ def process_polite_emails():
     # i = 0
     for email in polite_files:
         tokens = tokenize_email(email)
-        get_ngrams(tokens, True, False)
+        get_ngrams(tokens, True, True)
         # if i > 10:
             # break
         # i += 1
         
-    spn = sorted(polite_ngrams.items(), key=operator.itemgetter(1))
-    num_ngrams = len(spn)
-    i = num_ngrams - 1
-    while i > (num_ngrams - 401):
-        print spn[i][0], spn[i][1]
-        i -= 1
+    for email in impolite_files:
+        tokens = tokenize_email(email)
+        get_ngrams(tokens, False, True)
+        
 
+def get_class_probs(tokens):
+    """
+    Given a tokenized sequence / email / text input, return
+    the probabilities of the input being polite or impolite
+    based on the learned n-gram counts from the enron corpus.
+    """
+    polite_prob = prob_polite
+    impolite_prob = prob_impolite
+    
+    # go through the n-grams and calculate the probabilities with smoothing
+    num_toks = len(tokens)
+    ignored_toks = [ "." ] # , "the", "on", "a", "of", "in", "for" ]
+    i = 0
+    prev_prob = "" # what the previous probability was calculated as (tri, bi, or uni)
+    while i < num_toks:
+        word = tokens[i]
+        # if we have it, use the trigram prob
+        if i+2 < num_toks:
+            tri_word = tokens[i+2]
+            bi_word = tokens[i+1]
+            if word in ignored_toks or bi_word in ignored_toks or tri_word in ignored_toks:
+                i += 1
+                continue
+            trigram = word + " " + bi_word + " " + tri_word
+            tri_polite = 0
+            tri_impolite = 0
+            if trigram in polite_ngrams and trigram in impolite_ngrams:
+                print "TRI", i, trigram
+            
+            # if trigram not in :
+                # dict[trigram] = 0
+            # dict[trigram] += 1
+            # total_ngrams.add(trigram)
+        
+        i += 1
+    
 
 def tokenize_email(email_path):
     """
@@ -166,7 +221,7 @@ def get_ngrams(tokens, is_polite, process_unigrams):
     """
     dict = polite_ngrams if is_polite else impolite_ngrams
     num_toks = len(tokens)
-    ignored_toks = [ ".", "the", "on", "a", "of", "in", "for" ]
+    ignored_toks = [ "." ] #, "the", "on", "a", "of", "in", "for" ]
     for i in range(0, num_toks):
         word = tokens[i]
         if word in ignored_toks:
@@ -198,7 +253,11 @@ def get_ngrams(tokens, is_polite, process_unigrams):
             dict[trigram] += 1
             total_ngrams.add(trigram)
 
+    vocab_size = len(total_ngrams)
 
+
+
+### FOR WORKING WITH SELECTED POLITE N-GRAMS
 def get_selected_polite_ngrams():
     """
     Reads selected_polite_ngrams.txt (made of selected polite n-grams generated by this program)
@@ -254,14 +313,19 @@ def get_enron_politeness_score(tokens):
             # print trigram
             
     return count
-
+### END SELECTED POLITE N-GRAMS
 
 if __name__ == "__main__":
-    # categorize_emails()
+    categorize_emails()
+    process_emails()
+    tokens = tokenize_text("i would be very happy if you would let me know about the pie." 
+    + " the pie is very important to me. i think that it may be significant to the future of the world.")
+    get_class_probs(tokens)
     # process_polite_emails()
     # testing examples: 
-    tokens = tokenize_text("so idk about you but i would really like this pie. give me this pie. no pie for you. nope.")
-    print get_enron_politeness_score(tokens)
-    tokens = tokenize_text("i would be very happy if you would let me know about the pie." 
-        + " the pie is very important to me. i think that it may be significant to the future of the world.")
-    print get_enron_politeness_score(tokens)
+    # tokens = tokenize_text("so idk about you but i would really like this pie. give me this pie. no pie for you. nope.")
+    # print get_enron_politeness_score(tokens)
+    # tokens = tokenize_text("i would be very happy if you would let me know about the pie." 
+        # + " the pie is very important to me. i think that it may be significant to the future of the world.")
+    # print get_enron_politeness_score(tokens)
+    
